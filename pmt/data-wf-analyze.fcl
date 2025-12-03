@@ -1,0 +1,67 @@
+#include "services_common_icarus.fcl"
+#include "channelmapping_icarus.fcl"
+
+#include "decoderdefs_icarus.fcl"
+#include "timing_icarus.fcl"
+#include "icarus_ophitfinder.fcl"
+
+#include "mc_wf_analyzer.fcl"
+
+process_name: mcana
+
+services:
+{
+   TFileService:            { fileName: "%ifb_%tc-%p.root" }
+   @table::icarus_geometry_services
+   @table::icarus_basic_services
+   DetectorClocksService: @local::icarus_detectorclocks
+   IICARUSChannelMap: @local::icarus_channelmappinggservice
+   PMTTimingCorrections: @local::icarus_pmttimingservice
+}
+
+#Look at the input files
+source:
+{
+  module_type: RootInput
+  fileNames:  [ "mc.root" ]
+  maxEvents:   -1       # Number of events to create
+}
+
+# Make sure to get rid of NuRandomSvc (not thread save)
+services.NuRandomService: @erase
+
+physics:
+{
+   producers:
+   {
+      triggerconfig: @local::extractTriggerConfig
+      pmtconfig:     @local::extractPMTconfig
+    
+      daqTrigger:    @local::decodeTriggerAutodetect   
+      daqPMT:        @local::decodePMT
+      ophituncorrected: @local::icarus_ophit_data
+   }
+
+   analyzers: 
+   {
+     mcana: @local::mc_waveform_ana
+   }
+
+   my_producer_modules: [ triggerconfig, pmtconfig, daqTrigger, daqPMT, ophituncorrected ]
+
+   ana: [ mcana ]
+
+   end_paths: [ana]
+}
+
+physics.producers.daqTrigger.DecoderTool.Decoders[0].ToolConfig.TrigConfigLabel: triggerconfig
+physics.producers.daqTrigger.DecoderTool.Decoders[1].ToolConfig.TrigConfigLabel: triggerconfig
+physics.producers.daqTrigger.DecoderTool.Decoders[2].ToolConfig.TrigConfigLabel: triggerconfig
+physics.producers.daqPMT.PMTconfigTag: pmtconfig # required
+physics.producers.daqPMT.TriggerTag:   daqTrigger # required
+
+physics.producers.ophituncorrected.InputModule: "daqPMT"
+
+physics.analyzers.mcana.WaveformModule: "daqPMT"
+physics.analyzers.mcana.OpHitModule: "ophituncorrected" 
+physics.analyzers.mcana.SimPhotonsModule: "" 
