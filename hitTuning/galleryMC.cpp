@@ -15,6 +15,7 @@
 #include "nusimdata/SimulationBase/MCTruth.h"
 #include "lardataobj/AnalysisBase/BackTrackerMatchingData.h"
 #include "lardataobj/Simulation/SimChannel.h"
+#include "sbnobj/ICARUS/TPC/ChannelROI.h"
 #include "TCanvas.h"
 #include <iostream>
 #include <vector>
@@ -44,7 +45,7 @@ float getFillValue(float hitEnergy, float ideEnergy) {
 
 // Function to draw wire waveform and overlay hit Gaussians
 TCanvas* wireDraw(const std::vector<recob::Hit>& hits,
-                 const std::vector<recob::Wire>& wires,
+                 const std::vector<recob::ChannelROI>& wires,
                  int channel) {
     
     
@@ -318,7 +319,7 @@ std::vector<std::vector<float>> galleryMC(std::string const& inputFile = "nomina
         auto const& mcHandle = *ev.getValidHandle<std::vector<simb::MCParticle>>("largeant");
         auto const& simHandle   = *ev.getValidHandle<std::vector<sim::SimChannel>>("merge");
         auto const& wireEE =
-           *ev.getValidHandle<std::vector<recob::Wire>>({"channel2wire", "PHYSCRATEDATATPCEE"});
+           *ev.getValidHandle<std::vector<recob::ChannelROI>>({"wire2channelroi2d", "PHYSCRATEDATATPCEE"});
 
         auto const& hitTruthAssns = *hitTruthAssnsHandle;  // Dereference handle
         

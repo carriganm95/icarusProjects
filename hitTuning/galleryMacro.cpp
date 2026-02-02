@@ -2,6 +2,7 @@
 #include "canvas/Persistency/Common/Wrapper.h"
 #include "lardataobj/RecoBase/Hit.h"
 #include "lardataobj/RecoBase/Wire.h"
+#include "sbnobj/ICARUS/TPC/ChannelROI.h"
 #include "TCanvas.h"
 #include <iostream>
 #include <vector>
@@ -13,8 +14,10 @@
 
 // Function to draw wire waveform and overlay hit Gaussians
 TCanvas* wireDraw(const std::vector<recob::Hit>& hits,
-                 const std::vector<recob::Wire>& wires,
-                 int channel) {
+                 const std::vector<recob::ChannelROI>& wires,
+                 int channel,
+                 int timeLow, 
+                 int timeHigh) {
     
     
     TCanvas* c1 = new TCanvas("c1", "Wire Waveform with Hits", 800, 600);
@@ -30,19 +33,22 @@ TCanvas* wireDraw(const std::vector<recob::Hit>& hits,
     }
 
     std::cout << "Drawing wire index: " << wireIdx << " channel: " << wires[wireIdx].Channel() << std::endl;
-    TH1F* hWire = new TH1F("hWire", "Wire Waveform", wires[wireIdx].NSignal(), 0, wires[wireIdx].NSignal());  
+    //TH1F* hWire = new TH1F("hWire", "Wire Waveform", wires[wireIdx].NSignal(), 0, wires[wireIdx].NSignal());  
+    TH1F* hWire = new TH1F("hWire", "Wire Waveform", timeHigh-timeLow, timeLow, timeHigh);  
+
     for (int i = 0; i < (int)wires[wireIdx].Signal().size(); ++i) {
-        hWire->SetBinContent(i, wires[wireIdx].Signal()[i]);
+        hWire->SetBinContent(i, wires[wireIdx].Signal()[i] / wires[wireIdx].ADCScaleFactor());
     }  
 
     // Create histogram for summed Gaussians from hits
-    TH1F* hHits = new TH1F("hHits", "Summed Hit Gaussians", wires[wireIdx].NSignal(), 0, wires[wireIdx].NSignal());
+    //TH1F* hHits = new TH1F("hHits", "Summed Hit Gaussians", wires[wireIdx].NSignal(), 0, wires[wireIdx].NSignal());
+    TH1F* hHits = new TH1F("hHits", "Summed Hit Gaussians", timeHigh-timeLow, timeLow, timeHigh);
     
     // Filter hits for channel 15700 and sum their Gaussians
     int nHitsOnChannel = 0;
     std::cout << "Total of " << hits.size() << " hits in the event." << std::endl;
     for (const auto& hit : hits) {
-        if ((int)hit.Channel() == 15700) {
+        if ((int)hit.Channel() == channel) {
             nHitsOnChannel++;
             float mean = hit.PeakTime();
             float amplitude = hit.PeakAmplitude();
@@ -64,7 +70,7 @@ TCanvas* wireDraw(const std::vector<recob::Hit>& hits,
     hWire->GetYaxis()->SetTitle("ADC Counts");
     hWire->GetXaxis()->SetTitle("Time Tick");
     hWire->SetMaximum(maxY * 1.2);
-    hWire->GetXaxis()->SetRangeUser(800, 1900);
+    hWire->GetXaxis()->SetRangeUser(timeLow, timeHigh);
     c1->cd();
     hWire->Draw();
     hHits->SetLineColor(kRed);
@@ -78,7 +84,7 @@ TCanvas* wireDraw(const std::vector<recob::Hit>& hits,
     return c1;
 }
 
-void galleryMacro(std::string const& inputFile = "nominalTest.root", std::string const& outputFile = "histnominalTest.root") {
+void galleryMacro(std::string const& inputFile = "nominalTest.root", std::string const& outputFile = "histnominalTest.root", int channel = 15700, int timeLow = 0, int timeHigh = 5000) {
 
     gStyle->SetOptStat(0);
     gROOT->SetBatch(kTRUE);
@@ -126,8 +132,15 @@ void galleryMacro(std::string const& inputFile = "nominalTest.root", std::string
            *ev.getValidHandle<std::vector<recob::Hit>>({"gaushit2dTPCEW"});
         auto const& hitsEE =
            *ev.getValidHandle<std::vector<recob::Hit>>({"gaushit2dTPCEE"});
+
+        auto const& wireEE =
+           *ev.getValidHandle<std::vector<recob::ChannelROI>>({"wire2channelroi2d", "PHYSCRATEDATATPCEE"});
         auto const& wireEW =
-           *ev.getValidHandle<std::vector<recob::Wire>>({"channel2wire", "PHYSCRATEDATATPCEW"});
+           *ev.getValidHandle<std::vector<recob::ChannelROI>>({"wire2channelroi2d", "PHYSCRATEDATATPCEW"});
+        auto const& wireWE =
+           *ev.getValidHandle<std::vector<recob::ChannelROI>>({"wire2channelroi2d", "PHYSCRATEDATATPCWE"});
+        auto const& wireWW =
+           *ev.getValidHandle<std::vector<recob::ChannelROI>>({"wire2channelroi2d", "PHYSCRATEDATATPCWW"});
 
         std::vector< const std::vector<recob::Hit>* > allHits = {&hitsWW, &hitsWE, &hitsEW, &hitsEE};
 
@@ -145,8 +158,9 @@ void galleryMacro(std::string const& inputFile = "nominalTest.root", std::string
             }
         }
 
+        // Note this needs to be manually changed to the correct subdetector 
         if (evtCounter == 0){
-            c_wire = wireDraw(hitsEW, wireEW, 15700);
+            c_wire = wireDraw(hitsEW, wireEW, channel, timeLow, timeHigh);
         }
         ev.next();
         evtCounter++;

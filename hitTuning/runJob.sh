@@ -195,7 +195,7 @@ if [ -n "$treeName" ]; then
 fi
 
 inputFile="${INPUT_TAR_DIR_LOCAL}/gridSkimFiles.list"
-fclFile="${INPUT_TAR_DIR_LOCAL}/gridFcl/hitTuning_MC_${jobNum}.fcl"
+fclFile="${INPUT_TAR_DIR_LOCAL}/gridFcl/hitTuning_test_${jobNum}.fcl"
 echo "Running job ${jobNum} with script ${macro_file} on input file ${inputFile} with output ${outputFile}"
 
 pushd "${work_dir}" >/dev/null

@@ -1,13 +1,13 @@
 #! /bin/bash
 
-sourceDir="/pnfs/icarus/scratch/users/micarrig/hitTuning/mc/gridV2/"
+sourceDir="/pnfs/icarus/scratch/users/micarrig/hitTuning/mc/gridTest/"
 exe="runJob.sh"
 export fclFile=""
 export tarFile="hitTuning.tar.gz"
 export fileList=""
 export outputDir=$sourceDir
 export nEvents=-1
-export anaFile="hitTuningGrid.py"
+export anaFile="hitTuning.py"
 nJobs=$(ls -l ${sourceDir}/gridFcl/*.fcl | wc -l)
 recopy=false
 export treeName="" #if a tree name is passed the input file will be checked to see if the tree has entries
