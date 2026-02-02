@@ -560,7 +560,6 @@ physics.producers.gaushit2dTPCEW.CalDataModuleLabel:                            
 physics.producers.gaushit2dTPCEE.CalDataModuleLabel:                                     "wire2channelroi2d:PHYSCRATEDATATPCEE"
 
 physics.reco: [
-                channel2wire,
                 gaushit2dTPCEW,
                 gaushit2dTPCEE,
                 gaushit2dTPCWW,
