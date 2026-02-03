@@ -108,8 +108,6 @@ echo "Output will be stored in $outputDir"
 jobsub_cmd="jobsub_submit -G icarus -N ${nJobs} --maxConcurrent 50 --expected-lifetime=18h --disk=25GB --memory=8000MB -e IFDH_CP_MAXRETRIES=4 -e IFDH_CP_UNLINK_ON_ERROR=2 --lines '+FERMIHTC_AutoRelease=True' --lines '+FERMIHTC_GraceMemory=4096' --lines '+FERMIHTC_GraceLifetime=3600' -l '+SingularityImage=\"/cvmfs/singularity.opensciencegrid.org/fermilab/fnal-wn-sl7\:latest\"' --append_condor_requirements='(TARGET.HAS_Singularity==true)'"
 
 # Add tarball to command if specified
-
-# Add tarball to command if specified
 if [ -n "$tarFile" ] && [ -f "${sourceDir}/${tarFile}" ]; then
     jobsub_cmd="${jobsub_cmd} --tar_file_name dropbox://${sourceDir}/${tarFile} --use-cvmfs-dropbox -e tarFile"
 fi

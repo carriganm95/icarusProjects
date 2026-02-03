@@ -273,7 +273,7 @@ target_dir="${outputDir}/outputs/${subdir}"
 
 # Check if target directory exists
 if ! ifdh ls "$target_dir" >/dev/null 2>&1; then
-    echo "ERROR: Target directory $target_dir does not exist" >&2
+    echo "ERROR: Target directory $target_dir does not exist or is not accessible" >&2
     cleanup_and_exit 50
 fi
 
