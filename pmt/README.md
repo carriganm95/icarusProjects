@@ -380,6 +380,5 @@ File contains different run number than expected. Likely a file list ordering is
 
 ## References
 
-- SPE Calibration Method: [ICARUS PMT Calibration Documentation]
 - Gain Values: [PMT Calibration Spreadsheet](https://docs.google.com/spreadsheets/d/1Kra6eIflTKS_sMghBqgpy1h86Z8WKkibZLrLnDAdWaQ/)
 - Standard Gain (fcl): `icaruscode/PMT/OpReco/fcl/icarus_spe.fcl`

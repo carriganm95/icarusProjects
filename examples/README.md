@@ -291,7 +291,7 @@ TypeError: getValidHandle<...>
 ## Further Reading
 
 - **Gallery Documentation**: [LArSoft Gallery Wiki](https://cdcvs.fnal.gov/redmine/projects/gallery/wiki)
-- **LArSoft Data Products**: [LArSoft Doxygen](https://code-doc.fnal.gov/docs/larsoft/v09_00_00/)
+- **LArSoft Data Products**: [LArSoft Doxygen](https://code-doc.fnal.gov/docs/larsoft/) (Replace version in URL with your installed version)
 - **ICARUS Software**: [ICARUS Code Documentation](https://github.com/SBNSoftware/icaruscode)
 
 ## Building Your Own Analysis
