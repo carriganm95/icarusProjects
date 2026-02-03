@@ -33,8 +33,9 @@ TCanvas* wireDraw(const std::vector<recob::Hit>& hits,
     std::cout << "Drawing wire index: " << wireIdx << " channel: " << wires[wireIdx].Channel() << std::endl;
     TH1F* hWire = new TH1F("hWire", "Wire Waveform", timeHigh-timeLow, timeLow, timeHigh);  
 
-    for (int i = 0; i < (int)wires[wireIdx].Signal().size(); ++i) {
-        hWire->SetBinContent(i, wires[wireIdx].Signal()[i] / wires[wireIdx].ADCScaleFactor());
+    auto adcs = wires[wireIdx].SignalROIF();
+    for (int i = 0; i < (int)adcs.size(); ++i) {
+        hWire->SetBinContent(i, adcs[i] / wires[wireIdx].ADCScaleFactor());
     }  
 
     // Create histogram for summed Gaussians from hits
