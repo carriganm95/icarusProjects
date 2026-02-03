@@ -1,24 +1,27 @@
 import os
 import sqlite3
 from datetime import datetime
+from typing import List, Optional, Dict, Any, Union, Tuple
 import ROOT as r
 from itertools import product
 import argparse
 import sys
 
 class fclParams:
+    """Class to hold FCL (FHiCL) configuration parameters for hit finding."""
+    
     def __init__(self, 
-                roiThreshold = [5.0, 5.0, 5.0], 
-                minPulseHeight = [2.0, 2.0, 2.0], 
-                minPulseSigma = [1.0, 1.0, 1.0], 
-                LongMaxHits = [1, 1, 1], 
-                LongPulseWidth = [10.0, 10.0, 10.0], 
-                PulseHeightCuts = [3, 3, 3], 
-                PulseWidthCuts = [2, 1.5, 1],
-                PulseRatioCuts = [3.5e-1, 4e-1, 2e-1],
-                MaxMultiHit = 5,
-                Chi2NDF = 500.0
-                ):
+                roiThreshold: Union[List[float], float] = [5.0, 5.0, 5.0], 
+                minPulseHeight: Union[List[float], float] = [2.0, 2.0, 2.0], 
+                minPulseSigma: Union[List[float], float] = [1.0, 1.0, 1.0], 
+                LongMaxHits: Union[List[int], int] = [1, 1, 1], 
+                LongPulseWidth: Union[List[float], float] = [10.0, 10.0, 10.0], 
+                PulseHeightCuts: Union[List[float], float] = [3, 3, 3], 
+                PulseWidthCuts: Union[List[float], float] = [2, 1.5, 1],
+                PulseRatioCuts: Union[List[float], float] = [3.5e-1, 4e-1, 2e-1],
+                MaxMultiHit: int = 5,
+                Chi2NDF: float = 500.0
+                ) -> None:
 
         self.roiThreshold = self.setList(roiThreshold)
         self.minPulseHeight = self.setList(minPulseHeight)
@@ -31,12 +34,21 @@ class fclParams:
         self.MaxMultiHit = MaxMultiHit
         self.Chi2NDF = Chi2NDF
     
-    def setList(self, var):
+    def setList(self, var: Union[List[Union[int, float]], int, float]) -> List[Union[int, float]]:
+        """Convert single value to list of three identical values, or return list as-is.
+        
+        Args:
+            var: Single value or list of values
+            
+        Returns:
+            List with three values (replicated if input was single value)
+        """
         if not isinstance(var, list):
             return [var, var, var]
         return var
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """Return string representation of FCL parameters."""
         return f"""fclParams:
     roiThreshold: {self.roiThreshold}
     minPulseHeight: {self.minPulseHeight}
@@ -49,8 +61,15 @@ class fclParams:
     MaxMultiHit: {self.MaxMultiHit}
     Chi2NDF: {self.Chi2NDF}"""
 
-def _parse_value(val_str: str):
-    """Parse a single FCL RHS value into a Python type."""
+def _parse_value(val_str: str) -> Union[List, bool, int, float, str]:
+    """Parse a single FCL RHS value into a Python type.
+    
+    Args:
+        val_str: String value from FCL file
+        
+    Returns:
+        Parsed value as appropriate Python type (list, bool, int, float, or str)
+    """
     s = val_str.strip()
 
     # List
@@ -81,12 +100,20 @@ def _parse_value(val_str: str):
     return s
 
 class HitTuningDB:
-    def __init__(self, db_path="hitTuning.db"):
-        self.db_path = db_path
-        self.conn = sqlite3.connect(db_path)
+    """Database manager for hit tuning parameter scans and results."""
+    
+    def __init__(self, db_path: str = "hitTuning.db") -> None:
+        """Initialize database connection and create tables if needed.
+        
+        Args:
+            db_path: Path to SQLite database file
+        """
+        self.db_path: str = db_path
+        self.conn: sqlite3.Connection = sqlite3.connect(db_path)
         self.create_tables()
     
-    def create_tables(self):
+    def create_tables(self) -> None:
+        """Create database tables for storing run parameters and results."""
         cursor = self.conn.cursor()
         
         # Create table for tracking runs
@@ -154,7 +181,22 @@ class HitTuningDB:
         
         self.conn.commit()
     
-    def add_run(self, params, jobNum, fcl_filename, output_filename=None, hist_filename=None, notes=None):
+    def add_run(self, params: fclParams, jobNum: int, fcl_filename: str, 
+                output_filename: Optional[str] = None, hist_filename: Optional[str] = None, 
+                notes: Optional[str] = None) -> int:
+        """Add a new run to the database.
+        
+        Args:
+            params: FCL parameters for this run
+            jobNum: Job number identifier
+            fcl_filename: Path to FCL configuration file
+            output_filename: Path to output ROOT file (optional)
+            hist_filename: Path to histogram ROOT file (optional)
+            notes: Additional notes about this run (optional)
+            
+        Returns:
+            Database ID of the inserted run
+        """
         cursor = self.conn.cursor()
         
         timestamp = datetime.now().isoformat()
@@ -196,18 +238,38 @@ class HitTuningDB:
         self.conn.commit()
         return cursor.lastrowid
     
-    def get_run(self, run_id):
+    def get_run(self, run_id: int) -> Optional[Tuple]:
+        """Retrieve a single run by ID.
+        
+        Args:
+            run_id: Database ID of the run
+            
+        Returns:
+            Tuple containing run data, or None if not found
+        """
         cursor = self.conn.cursor()
         cursor.execute('SELECT * FROM runs WHERE id = ?', (run_id,))
         return cursor.fetchone()
     
-    def get_all_runs(self):
+    def get_all_runs(self) -> List[Tuple]:
+        """Retrieve all runs from database, ordered by timestamp.
+        
+        Returns:
+            List of tuples containing run data
+        """
         cursor = self.conn.cursor()
         cursor.execute('SELECT * FROM runs ORDER BY timestamp DESC')
         return cursor.fetchall()
     
-    def search_runs(self, **kwargs):
-        """Search runs by parameter values"""
+    def search_runs(self, **kwargs: Any) -> List[Tuple]:
+        """Search runs by parameter values.
+        
+        Args:
+            **kwargs: Key-value pairs to filter runs
+            
+        Returns:
+            List of tuples containing matching run data
+        """
         cursor = self.conn.cursor()
         
         query = 'SELECT * FROM runs WHERE 1=1'
@@ -220,24 +282,38 @@ class HitTuningDB:
         cursor.execute(query, params)
         return cursor.fetchall()
     
-    def update_output_filename(self, run_id, output_filename):
+    def update_output_filename(self, run_id: int, output_filename: str) -> None:
+        """Update the output filename for a run.
+        
+        Args:
+            run_id: Database ID of the run
+            output_filename: Path to output ROOT file
+        """
         cursor = self.conn.cursor()
         cursor.execute('UPDATE runs SET output_filename = ? WHERE id = ?', 
                       (output_filename, run_id))
         self.conn.commit()
     
-    def update_hist_filename(self, run_id, hist_filename):
+    def update_hist_filename(self, run_id: int, hist_filename: str) -> None:
+        """Update the histogram filename for a run.
+        
+        Args:
+            run_id: Database ID of the run
+            hist_filename: Path to histogram ROOT file
+        """
         cursor = self.conn.cursor()
         cursor.execute('UPDATE runs SET hist_filename = ? WHERE id = ?', 
                       (hist_filename, run_id))
         self.conn.commit()
     
-    def update_results(self, run_id, results):
-        """Update the run with results from galleryMC
+    def update_results(self, run_id: int, results: List[List[float]]) -> None:
+        """Update the run with results from galleryMC.
         
         Args:
             run_id: The database run ID
-            results: List/vector of 6 floats [ratio_total, ratio_ele, ratio_gamma, ratio_mu, ratio_p, ratio_pi]
+            results: List of lists containing ratio results for different particle types
+                    Format: [[ratio_total, ...], [ratio_ele, ...], [ratio_gamma, ...], 
+                            [ratio_mu, ...], [ratio_p, ...], [ratio_pi, ...]]
         """
         cursor = self.conn.cursor()
         cursor.execute('''UPDATE runs SET 
@@ -275,11 +351,18 @@ class HitTuningDB:
                         run_id))
         self.conn.commit()
     
-    def close(self):
+    def close(self) -> None:
+        """Close the database connection."""
         self.conn.close()
 
-def generateFCLMC(params, outputFile="hitTuningMC.fcl", verbose=False):
-
+def generateFCLMC(params: fclParams, outputFile: str = "hitTuningMC.fcl", verbose: bool = False) -> None:
+    """Generate FCL configuration file for Monte Carlo data processing.
+    
+    Args:
+        params: FCL parameters to use in configuration
+        outputFile: Path to output FCL file
+        verbose: Whether to print parameters to console
+    """
     if verbose:
         print("Generating new FHICL file for MC with the following parameters:")
         print(params.__str__())
@@ -448,8 +531,14 @@ physics.end_paths: [ outana, stream1 ]'''
     with open(outputFile, 'w') as f:
         f.write(fclStr)
 
-def gererateFCL(params, outputFile="hitTuning.fcl", verbose=False):
-
+def generateFCL(params: fclParams, outputFile: str = "hitTuning.fcl", verbose: bool = False) -> None:
+    """Generate FCL configuration file for real data processing.
+    
+    Args:
+        params: FCL parameters to use in configuration
+        outputFile: Path to output FCL file
+        verbose: Whether to print parameters to console
+    """
     if verbose:
         print("Generating new FHICL file with the following parameters:")
         print(params.__str__())
@@ -574,7 +663,15 @@ physics.end_paths: [ outana, stream1 ]
     with open(outputFile, 'w') as f:
         f.write(fclStr)
 
-def run(fclFile, inputFile, outputFile, options=None):
+def run(fclFile: str, inputFile: str, outputFile: str, options: Optional[str] = None) -> None:
+    """Run LArSoft with specified FCL file and input.
+    
+    Args:
+        fclFile: Path to FCL configuration file
+        inputFile: Path to input ROOT file or file list
+        outputFile: Path to output ROOT file
+        options: Additional command-line options for lar command
+    """
     if not inputFile.endswith('.root'):
         cmd = f"lar -c {fclFile} --source-list {inputFile} -o {outputFile}"
     else:
@@ -588,13 +685,28 @@ def run(fclFile, inputFile, outputFile, options=None):
     print(f"Running command: {cmd}")
     os.system(cmd)
 
-def reduceList(inputList):
+def reduceList(inputList: List[Union[int, float]]) -> Union[List[Union[int, float]], int, float]:
+    """Reduce single-element list to scalar value.
+    
+    Args:
+        inputList: List of values
+        
+    Returns:
+        Single value if list has one element, otherwise the original list
+    """
     if len(inputList) == 1:
         return inputList[0]
     return inputList
 
-def createGrid(defaultFirst=True):
-
+def createGrid(defaultFirst: bool = True) -> List[fclParams]:
+    """Create parameter grid for systematic hit tuning scan.
+    
+    Args:
+        defaultFirst: Whether to insert default parameters at the start of grid
+        
+    Returns:
+        List of fclParams objects representing parameter combinations
+    """
     print("Creating parameter grid for hit tuning...")
 
     v_roiThreshold = [[6.0], [5.0], [4.0], [3.0], [2.0], [1.0]]  
@@ -635,7 +747,12 @@ def createGrid(defaultFirst=True):
     print(f"Created grid with {len(param_grid)} parameter combinations")
     return param_grid
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments.
+    
+    Returns:
+        Namespace containing parsed arguments
+    """
     parser = argparse.ArgumentParser(description="Hit Tuning Parameter Scan")
     parser.add_argument('-c', '--createGrid', action='store_true', help='Create all fcl files for parameter grid')
     parser.add_argument('-o', '--outputDir', type=str, default='./fclFiles', help='Output directory')
@@ -674,7 +791,7 @@ if __name__ == "__main__":
             if MC:
                 generateFCLMC(params, outputFile=outputFCL, verbose=args.verbose)
             else:   
-                gererateFCL(params, outputFile=outputFCL, verbose=args.verbose)
+                generateFCL(params, outputFile=outputFCL, verbose=args.verbose)
         exit(0)
 
     # Load the macro (interpreted)
@@ -820,7 +937,7 @@ if __name__ == "__main__":
             if MC:
                 generateFCLMC(params, outputFile=outputFCL)
             else:   
-                gererateFCL(params, outputFile=outputFCL)
+                generateFCL(params, outputFile=outputFCL)
 
             # Add to database   
             run_id = db.add_run(params, args.runNumber, outputFCL, notes="") 
