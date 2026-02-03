@@ -47,21 +47,17 @@ float getFillValue(float hitEnergy, float ideEnergy) {
 TCanvas* wireDraw(const std::vector<recob::Hit>& hits,
                  const std::vector<recob::ChannelROI>& wires,
                  int channel) {
-    
-    
     TCanvas* c1 = new TCanvas("c1", "Wire Waveform with Hits", 800, 600);
 
     // Find the wire corresponding to the specified channel
     int wireIdx = 0;
     for (size_t i = 0; i < (size_t)wires.size(); ++i) {
         if ((int)wires[i].Channel() == channel){
-            //std::cout << "Wire " << i << " has " << wires[i].NSignal() << " samples." << std::endl;
             wireIdx = i;
             break;
         }
     }
 
-    //std::cout << "Drawing wire index: " << wireIdx << " channel: " << wires[wireIdx].Channel() << std::endl;
     TH1F* hWire = new TH1F("hWire", "Wire Waveform", wires[wireIdx].NSignal(), 0, wires[wireIdx].NSignal());  
     for (int i = 0; i < (int)wires[wireIdx].Signal().size(); ++i) {
         hWire->SetBinContent(i, wires[wireIdx].Signal()[i]);
@@ -70,9 +66,8 @@ TCanvas* wireDraw(const std::vector<recob::Hit>& hits,
     // Create histogram for summed Gaussians from hits
     TH1F* hHits = new TH1F("hHits", "Summed Hit Gaussians", wires[wireIdx].NSignal(), 0, wires[wireIdx].NSignal());
     
-    // Filter hits for channel and sum their Gaussians
+    // Filter hits for the specified channel and sum their Gaussians
     int nHitsOnChannel = 0;
-    //std::cout << "Total of " << hits.size() << " hits in the event." << std::endl;
     for (const auto& hit : hits) {
         if ((int)hit.Channel() == channel) {
             nHitsOnChannel++;
@@ -88,21 +83,18 @@ TCanvas* wireDraw(const std::vector<recob::Hit>& hits,
             }
         }
     }
-    //std::cout << "Found " << nHitsOnChannel << " hits on channel " << channel << std::endl;
-    //std::cout << "Max hit amplitude: " << hHits->GetMaximum() << std::endl;
     
     float maxY = std::max(hWire->GetMaximum(), hHits->GetMaximum());
     hWire->SetTitle(Form("Wire vs Hits on Channel %d", channel));
     hWire->GetYaxis()->SetTitle("ADC Counts");
     hWire->GetXaxis()->SetTitle("Time Tick");
     hWire->SetMaximum(maxY * 1.2);
-    //hWire->GetXaxis()->SetRangeUser(800, 1900);
     c1->cd();
     hWire->Draw();
     hHits->SetLineColor(kRed);
     hHits->Draw("same");
 
-    TLegend* legend = new TLegend(0.6,0.7,0.88,0.88);
+    TLegend* legend = new TLegend(0.6, 0.7, 0.88, 0.88);
     legend->AddEntry(hWire, "Wire ROI", "l");
     legend->AddEntry(hHits, "Hit Gaussians", "l");
     legend->Draw();
@@ -110,10 +102,9 @@ TCanvas* wireDraw(const std::vector<recob::Hit>& hits,
     return c1;
 }
 
-// return the plane number given a channel ID
+// Return the plane number given a channel ID
 // From ChannelMapICARUS_20240318.db
 int getPlane(int channelID){
-
     if (channelID >= 0 && channelID <= 2239) return 0;
     else if (channelID >= 13824 && channelID <= 16063) return 0;
     else if (channelID >= 27648 && channelID <= 29887) return 0;
@@ -129,12 +120,10 @@ int getPlane(int channelID){
     else if (channelID >= 35712 && channelID <= 41471) return 2;
     else if (channelID >= 49536 && channelID <= 55295) return 2;
 
-    else return -1; // invalid channel
-
+    return -1; // invalid channel
 }
 
 std::vector<std::vector<float>> galleryMC(std::string const& inputFile = "nominalTest.root", std::string const& outputFile = "histnominalTest.root") {
-
     gStyle->SetOptStat(0);
     gROOT->SetBatch(kTRUE);
 
@@ -304,9 +293,6 @@ std::vector<std::vector<float>> galleryMC(std::string const& inputFile = "nomina
     int evtCounter = 0;
     // Loop over events
     while (!ev.atEnd()) {
-        
-        //std::cout << "Processing entry " << evtCounter << " with event number: " << ev.eventAuxiliary().event() << " and run number " << ev.eventAuxiliary().run() << std::endl;
-
         float eventHitEnergy[3] = {0.0, 0.0, 0.0};
         float eventIdeEnergy[3] = {0.0, 0.0, 0.0};
         bool foundElectron = false;
@@ -317,7 +303,7 @@ std::vector<std::vector<float>> galleryMC(std::string const& inputFile = "nomina
 
         auto const& hitTruthAssnsHandle = ev.getValidHandle<art::Assns<recob::Hit, simb::MCParticle, anab::BackTrackerHitMatchingData>>("mcassociationsGausCryoE");
         auto const& mcHandle = *ev.getValidHandle<std::vector<simb::MCParticle>>("largeant");
-        auto const& simHandle   = *ev.getValidHandle<std::vector<sim::SimChannel>>("merge");
+        auto const& simHandle = *ev.getValidHandle<std::vector<sim::SimChannel>>("merge");
         auto const& wireEE =
            *ev.getValidHandle<std::vector<recob::ChannelROI>>({"wire2channelroi2d", "PHYSCRATEDATATPCEE"});
 
@@ -354,17 +340,12 @@ std::vector<std::vector<float>> galleryMC(std::string const& inputFile = "nomina
         }
 
         if (ev.eventAuxiliary().event() == 17559 && ev.eventAuxiliary().run() == 9311) {
-            /*for (auto& wire: wireEE) {
-                std::cout << "Wire Channel: " << wire.Channel() << " has " << wire.NSignal() << " samples." << std::endl;
-            }*/
             c_wire = wireDraw(hitsEE, wireEE, 609);
         }
 
-        //std::cout << "Number of hit-MCParticle associations: " << hitTruthAssns.size() << std::endl;
         for (auto it = hitTruthAssns.begin(); it != hitTruthAssns.end(); ++it) {
             auto const& [hit, mcpart, _unused] = *it; // unpack the 3 elements
             auto const& matchdata = hitTruthAssns.data(it); // Use iterator
-            //std::cout << "Processing hit on plane: " << hit->WireID().getIndex<2>() << std::endl;
             int plane = hit->WireID().getIndex<2>();
             if (abs(mcpart->PdgCode()) == 11){
                 if(matchdata.energy > 0) foundElectron = true;
@@ -442,13 +423,12 @@ std::vector<std::vector<float>> galleryMC(std::string const& inputFile = "nomina
         int maxTrackId = -1;
         for (auto const& sc : simHandle) {
             int plane = getPlane(sc.Channel());
-            //std::cout << "SimChannel on channel " << sc.Channel() << " corresponds to plane " << plane << std::endl;
             auto const& tdcide_map = sc.TDCIDEMap();
             for (auto const& kv : tdcide_map) {
                 unsigned int tick = kv.first;
                 for (auto const& ide : kv.second) {
-                    int trackID = ide.trackID;  // adjust if accessor differs
-                    float energy = ide.energy;  // adjust if accessor differs
+                    int trackID = ide.trackID;
+                    float energy = ide.energy;
                     eventIdeEnergy[plane] += energy;
                     if (ide.energy > maxE) {
                         maxE = ide.energy;
@@ -471,13 +451,11 @@ std::vector<std::vector<float>> galleryMC(std::string const& inputFile = "nomina
             
             TVector3 pVec(pX, pY, pZ);
             
-            maxE_theta = pVec.Theta();  // radians
-
-            maxE_phi = pVec.Phi();  // radians
+            maxE_theta = pVec.Theta();
+            maxE_phi = pVec.Phi();
         }
 
         if (maxEParticle != -9999) {
-            //cout << "Event " << evtCounter << ": Highest energy particle PDG " << maxEParticle << " with energy " << maxE << " MeV" << std::endl;
             if (abs(maxEParticle) == 11) h_maxEParticleCount->Fill(0);
             else if (abs(maxEParticle) == 22) h_maxEParticleCount->Fill(1);
             else if (abs(maxEParticle) == 13) h_maxEParticleCount->Fill(2);
@@ -577,8 +555,6 @@ std::vector<std::vector<float>> galleryMC(std::string const& inputFile = "nomina
                 }
             }
         }
-
-        //std::cout << "Event " << evtCounter << ": Total Hit Energy: " << eventHitEnergy << " MeV, Total IDE Energy: " << eventIdeEnergy << " MeV" << std::endl;
 
         ev.next();
         evtCounter++;

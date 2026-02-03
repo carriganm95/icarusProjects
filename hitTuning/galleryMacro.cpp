@@ -18,8 +18,6 @@ TCanvas* wireDraw(const std::vector<recob::Hit>& hits,
                  int channel,
                  int timeLow, 
                  int timeHigh) {
-    
-    
     TCanvas* c1 = new TCanvas("c1", "Wire Waveform with Hits", 800, 600);
 
     // Find the wire corresponding to the specified channel
@@ -33,7 +31,6 @@ TCanvas* wireDraw(const std::vector<recob::Hit>& hits,
     }
 
     std::cout << "Drawing wire index: " << wireIdx << " channel: " << wires[wireIdx].Channel() << std::endl;
-    //TH1F* hWire = new TH1F("hWire", "Wire Waveform", wires[wireIdx].NSignal(), 0, wires[wireIdx].NSignal());  
     TH1F* hWire = new TH1F("hWire", "Wire Waveform", timeHigh-timeLow, timeLow, timeHigh);  
 
     for (int i = 0; i < (int)wires[wireIdx].Signal().size(); ++i) {
@@ -41,10 +38,9 @@ TCanvas* wireDraw(const std::vector<recob::Hit>& hits,
     }  
 
     // Create histogram for summed Gaussians from hits
-    //TH1F* hHits = new TH1F("hHits", "Summed Hit Gaussians", wires[wireIdx].NSignal(), 0, wires[wireIdx].NSignal());
     TH1F* hHits = new TH1F("hHits", "Summed Hit Gaussians", timeHigh-timeLow, timeLow, timeHigh);
     
-    // Filter hits for channel 15700 and sum their Gaussians
+    // Filter hits for the specified channel and sum their Gaussians
     int nHitsOnChannel = 0;
     std::cout << "Total of " << hits.size() << " hits in the event." << std::endl;
     for (const auto& hit : hits) {
@@ -76,7 +72,7 @@ TCanvas* wireDraw(const std::vector<recob::Hit>& hits,
     hHits->SetLineColor(kRed);
     hHits->Draw("same");
 
-    TLegend* legend = new TLegend(0.6,0.7,0.88,0.88);
+    TLegend* legend = new TLegend(0.6, 0.7, 0.88, 0.88);
     legend->AddEntry(hWire, "Wire ROI", "l");
     legend->AddEntry(hHits, "Hit Gaussians", "l");
     legend->Draw();
