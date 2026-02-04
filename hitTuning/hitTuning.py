@@ -6,6 +6,7 @@ import ROOT as r
 from itertools import product
 import argparse
 import sys
+import re
 
 class fclParams:
     """Class to hold FCL (FHiCL) configuration parameters for hit finding."""
@@ -98,6 +99,73 @@ def _parse_value(val_str: str) -> Union[List, bool, int, float, str]:
 
     # Bare string
     return s
+
+def _ensure_list3(v):
+    """Normalize a value to a list of length 3 (replicate scalars; pad/truncate lists)."""
+    if isinstance(v, list):
+        if len(v) == 3:
+            return v
+        if len(v) == 1:
+            return [v[0], v[0], v[0]]
+        if len(v) > 3:
+            return v[:3]
+        return v + [v[-1]] * (3 - len(v))
+    return [v, v, v]
+
+def get_all_values(key: str, text: str) -> List[Union[List, bool, int, float, str]]:
+    # Matches lines like: key: <value> (ignoring trailing comments)
+    pattern = rf"{re.escape(key)}\s*:\s*([^\n#]+)"
+    matches = re.findall(pattern, text)
+    return [_parse_value(m.strip()) for m in matches]
+
+def parse_fcl_to_params(fcl_path: str) -> 'fclParams':
+    """Read a FCL file and reconstruct an fclParams object."""
+    with open(fcl_path, 'r') as f:
+        text = f.read()
+
+    # Per-plane thresholds appear multiple times; take the last occurrence of each
+    rt0 = get_all_values('HitFinderToolVec.CandidateHitsPlane0.RoiThreshold', text)
+    rt1 = get_all_values('HitFinderToolVec.CandidateHitsPlane1.RoiThreshold', text)
+    rt2 = get_all_values('HitFinderToolVec.CandidateHitsPlane2.RoiThreshold', text)
+
+    mph = get_all_values('HitFilterAlg.MinPulseHeight', text)
+    mps = get_all_values('HitFilterAlg.MinPulseSigma', text)
+    lmh = get_all_values('LongMaxHits', text)
+    lpw = get_all_values('LongPulseWidth', text)
+    phc = get_all_values('PulseHeightCuts', text)
+    pwc = get_all_values('PulseWidthCuts', text)
+    prc = get_all_values('PulseRatioCuts', text)
+    mmh = get_all_values('MaxMultiHit', text)
+    chi = get_all_values('Chi2NDF', text)
+
+    roiThreshold = _ensure_list3([
+        (rt0[-1] if rt0 else 5.0),
+        (rt1[-1] if rt1 else 5.0),
+        (rt2[-1] if rt2 else 5.0),
+    ])
+
+    minPulseHeight = _ensure_list3(mph[-1] if mph else 2.0)
+    minPulseSigma  = _ensure_list3(mps[-1] if mps else 1.0)
+    LongMaxHits    = _ensure_list3(lmh[-1] if lmh else 1)
+    LongPulseWidth = _ensure_list3(lpw[-1] if lpw else 10.0)
+    PulseHeightCuts= _ensure_list3(phc[-1] if phc else 3)
+    PulseWidthCuts = _ensure_list3(pwc[-1] if pwc else 2)
+    PulseRatioCuts = _ensure_list3(prc[-1] if prc else 0.35)
+    MaxMultiHit    = mmh[-1] if mmh else 5
+    Chi2NDF        = chi[-1] if chi else 500.0
+
+    return fclParams(
+        roiThreshold=roiThreshold,
+        minPulseHeight=minPulseHeight,
+        minPulseSigma=minPulseSigma,
+        LongMaxHits=LongMaxHits,
+        LongPulseWidth=LongPulseWidth,
+        PulseHeightCuts=PulseHeightCuts,
+        PulseWidthCuts=PulseWidthCuts,
+        PulseRatioCuts=PulseRatioCuts,
+        MaxMultiHit=MaxMultiHit,
+        Chi2NDF=Chi2NDF,
+    )
 
 class HitTuningDB:
     """Database manager for hit tuning parameter scans and results."""
@@ -772,14 +840,10 @@ if __name__ == "__main__":
 
     args = parse_args()
 
-    # Set output directory for fcl files
-    outputDir = args.outputDir
-    if not os.path.exists(outputDir):
-        os.makedirs(outputDir)
-    runGrid = not args.debug
     MC = args.mc
     fileSubStr = args.tag
 
+    #create the fcl files for a grid search
     if args.createGrid:
         paramGrid = createGrid()
         for ip, params in enumerate(paramGrid):
@@ -793,16 +857,6 @@ if __name__ == "__main__":
             else:   
                 generateFCL(params, outputFile=outputFCL, verbose=args.verbose)
         exit(0)
-
-    # Load the macro (interpreted)
-    r.gInterpreter.ProcessLine('#include "gallery/Event.h"')
-    r.gInterpreter.ProcessLine('#include "canvas/Persistency/Common/FindManyP.h"')
-    r.gInterpreter.ProcessLine('#include "canvas/Utilities/InputTag.h"')
-    if args.mc:
-        result = r.gROOT.ProcessLine('.L galleryMC.cpp+')
-    else:
-        result = r.gROOT.ProcessLine('.L galleryMacro.cpp+')
-    print(f"Compilation result: {result}")
 
     # Initialize database
     db = HitTuningDB(f"hitTuning_{fileSubStr}.db")
@@ -818,6 +872,7 @@ if __name__ == "__main__":
 
     print(f"Processing input file: {inputFile}")
 
+    # Run over the grid on the batch system
     if args.runGrid:
         
         if not args.outputDir.endswith('.root'):
@@ -891,7 +946,24 @@ if __name__ == "__main__":
 
         sys.exit(0)
 
+    ## run interactively over specified parameter sets
     else:
+
+        # Load the macro (interpreted)
+        r.gInterpreter.ProcessLine('#include "gallery/Event.h"')
+        r.gInterpreter.ProcessLine('#include "canvas/Persistency/Common/FindManyP.h"')
+        r.gInterpreter.ProcessLine('#include "canvas/Utilities/InputTag.h"')
+        if args.mc:
+            result = r.gROOT.ProcessLine('.L galleryMC.cpp+')
+        else:
+            result = r.gROOT.ProcessLine('.L galleryMacro.cpp+')
+        print(f"Compilation result: {result}")
+
+        # Set output directory for fcl files
+        outputDir = args.outputDir
+        if not os.path.exists(outputDir):
+            os.makedirs(outputDir)
+
         # Create fclParams class to hold fcl parameters
         defaultParams = fclParams( 
                                 LongMaxHits=[3, 3, 3],
