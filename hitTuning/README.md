@@ -64,11 +64,6 @@ Gallery macros that run on Wire, ChannelROI, and Hit data products.
 - Metrics for all particles and by particle type
 - Used to determine optimal parameter sets
 
-**Key Metrics**:
-- Hit efficiency (fraction of true energy captured by hits)
-- Hit purity (fraction of hit energy from true particles)
-- Energy resolution
-
 ### galleryMacro.cpp
 **Purpose**: General hit analysis on data or MC
 
@@ -76,13 +71,6 @@ Gallery macros that run on Wire, ChannelROI, and Hit data products.
 - Basic hit histograms (charge, width, time, etc.)
 - ROI vs hit comparison plots for specific channels
 - Channel-by-channel statistics
-
-**Histograms Created**:
-- Hit charge distribution
-- Hit RMS (width) distribution
-- Hit peak time distribution
-- ROI parameters
-- Hits per event
 
 ## runJob.sh
 
@@ -93,11 +81,6 @@ Execute individual grid jobs for hit tuning parameter scans.
 
 ### Usage
 Called automatically by the grid submission system. Not typically run directly by users.
-
-### Environment
-- Sets up ICARUS software environment
-- Loads necessary LArSoft products
-- Configures gallery framework
 
 ## submitJobs.sh
 
@@ -134,18 +117,6 @@ Edit the script to specify:
 python mergeDBFiles.py
 ```
 
-### Features
-- Automatically finds all .db files in directory tree
-- Handles duplicate primary keys (configurable: ignore or replace)
-- Preserves schema from source databases
-- Validates table existence before merging
-
-### Arguments (in script)
-- `db_files`: List of source database file paths
-- `dest_db`: Destination merged database path
-- `table`: Table name to merge (default: "runs")
-- `conflict`: How to handle duplicates - "ignore" or "replace" (default: "ignore")
-
 ## eventDisplay.py
 
 Create event displays from stage1 reconstruction files showing wires/ROIs and hits.
@@ -180,18 +151,6 @@ python eventDisplay.py -i reco_file.root -e 25 -p 0 -v -d
 - PNG images: Event displays with wire signals and hit overlays
 - ROOT file: Histograms and canvases for further analysis
 
-### Detector Regions
-Automatically handles ICARUS's four TPC regions:
-- EE (East-East)
-- EW (East-West)  
-- WE (West-East)
-- WW (West-West)
-
-### Visualization
-- 2D histogram: Wire/channel vs time with signal intensity
-- Overlaid hits: Shown as red ellipses (position = peak time, width = RMS)
-- Color scale: Shows signal amplitude (ADC)
-
 ## Additional Files
 
 ### Jupyter Notebooks
@@ -222,14 +181,6 @@ Automatically handles ICARUS's four TPC regions:
    ```bash
    python eventDisplay.py -i file.root -e EVENT_NUM -p PLANE
    ```
-
-## Requirements
-
-### Python
-- ROOT (PyROOT)
-- sqlite3
-- argparse
-- numpy (for notebooks)
 
 ### C++
 - gallery framework
